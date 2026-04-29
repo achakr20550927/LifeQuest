@@ -547,7 +547,8 @@
     authMode: "signin",
     account: null,
     game: null,
-    budgetDraft: { wants: 0, futureSplit: 60 },
+    budgetDraft: { wants: 0, savings: 0, investing: 0 },
+    activeBudgetSlider: null,
     investDraft: {},
     selectedEventChoice: 0,
     selectedChallengeAnswer: null,
@@ -769,17 +770,118 @@
   function refreshBudgetDraft(game) {
     const available = getDiscretionary(game);
     const wants = Math.round(available * 0.35);
-    appState.budgetDraft = { wants, futureSplit: 60 };
+    const futurePool = Math.max(0, available - wants);
+    const savings = Math.round(futurePool * 0.6);
+    const investing = Math.max(0, futurePool - savings);
+    appState.budgetDraft = { wants, savings, investing };
+  }
+
+  function normalizeBudgetDraft(game, changedKey) {
+    const available = getDiscretionary(game);
+    let wants = clamp(Math.round(Number(appState.budgetDraft.wants || 0)), 0, available);
+    const futurePool = Math.max(0, available - wants);
+    let savings = clamp(Math.round(Number(appState.budgetDraft.savings || 0)), 0, futurePool);
+    let investing = clamp(Math.round(Number(appState.budgetDraft.investing || 0)), 0, futurePool);
+
+    if (changedKey === "savings") {
+      savings = clamp(savings, 0, futurePool);
+      investing = Math.max(0, futurePool - savings);
+    } else if (changedKey === "investing") {
+      investing = clamp(investing, 0, futurePool);
+      savings = Math.max(0, futurePool - investing);
+    } else {
+      savings = clamp(savings, 0, futurePool);
+      investing = Math.max(0, futurePool - savings);
+    }
+
+    appState.budgetDraft = { wants, savings, investing };
+    return { available, wants, futurePool, savings, investing };
   }
 
   function computeBudgetValues(game) {
     const available = getDiscretionary(game);
-    const wants = clamp(Number(appState.budgetDraft.wants || 0), 0, available);
+    const wants = clamp(Math.round(Number(appState.budgetDraft.wants || 0)), 0, available);
     const futurePool = Math.max(0, available - wants);
-    const futureSplit = clamp(Number(appState.budgetDraft.futureSplit || 0), 0, 100);
-    const savings = Math.round(futurePool * (futureSplit / 100));
+    const savings = clamp(Math.round(Number(appState.budgetDraft.savings || 0)), 0, futurePool);
     const investing = Math.max(0, futurePool - savings);
     return { available, wants, futurePool, savings, investing };
+  }
+
+  function setNodeText(id, value) {
+    const node = document.getElementById(id);
+    if (node) node.textContent = value;
+  }
+
+  function setNodeWidth(id, width) {
+    const node = document.getElementById(id);
+    if (node) node.style.width = `${width}%`;
+  }
+
+  function setSliderValue(id, value, max) {
+    const node = document.getElementById(id);
+    if (!node) return;
+    node.max = Math.max(0, max);
+    node.value = clamp(value, 0, Math.max(0, max));
+  }
+
+  function updateBudgetUI() {
+    const game = appState.game;
+    if (!game || game.stage !== "budget") return;
+    const values = computeBudgetValues(game);
+    const wantsRatio = values.available ? Math.round((values.wants / values.available) * 100) : 0;
+    const savingsRatio = values.futurePool ? Math.round((values.savings / values.futurePool) * 100) : 0;
+    const investingRatio = values.futurePool ? Math.round((values.investing / values.futurePool) * 100) : 0;
+
+    setNodeText("budget-wants-value", currency(values.wants));
+    setNodeText("budget-savings-value", currency(values.savings));
+    setNodeText("budget-investing-value", currency(values.investing));
+    setNodeText("budget-savings-card-value", currency(values.savings));
+    setNodeText("budget-investing-card-value", currency(values.investing));
+    setNodeText("budget-wants-chip", `Cap ${currency(values.available)}`);
+    setNodeText("budget-savings-chip", `Cap ${currency(values.futurePool)}`);
+    setNodeText("budget-investing-chip", `Cap ${currency(values.futurePool)}`);
+    setNodeText("budget-income-value", currency(currentIncome(game)));
+    setNodeText("budget-needs-value", currency(currentNeeds(game)));
+    setNodeText("budget-available-value", currency(values.available));
+    setNodeText("budget-future-pool-value", currency(values.futurePool));
+    setNodeText("budget-allocated-value", currency(values.wants + values.savings + values.investing));
+    setNodeText("budget-tactical-copy",
+      values.savings >= currentIncome(game) * 0.15
+        ? "Healthy month. You are protecting liquidity while still keeping room for growth."
+        : "Your savings side is light. That means this plan is faster but more fragile."
+    );
+
+    if (appState.activeBudgetSlider !== "wants") {
+      setSliderValue("budget-wants-slider", values.wants, values.available);
+    } else {
+      const node = document.getElementById("budget-wants-slider");
+      if (node) node.max = Math.max(0, values.available);
+    }
+
+    if (appState.activeBudgetSlider !== "savings") {
+      setSliderValue("budget-savings-slider", values.savings, values.futurePool);
+    } else {
+      const node = document.getElementById("budget-savings-slider");
+      if (node) node.max = Math.max(0, values.futurePool);
+    }
+
+    if (appState.activeBudgetSlider !== "investing") {
+      setSliderValue("budget-investing-slider", values.investing, values.futurePool);
+    } else {
+      const node = document.getElementById("budget-investing-slider");
+      if (node) node.max = Math.max(0, values.futurePool);
+    }
+    setNodeWidth("budget-wants-fill", wantsRatio);
+    setNodeWidth("budget-savings-fill", savingsRatio);
+    setNodeWidth("budget-investing-fill", investingRatio);
+  }
+
+  function handleBudgetSliderInput(key, value) {
+    const game = appState.game;
+    if (!game || game.stage !== "budget") return;
+    appState.budgetDraft[key] = Number(value);
+    normalizeBudgetDraft(game, key);
+    updateBudgetUI();
   }
 
   function startNewGame() {
@@ -1476,28 +1578,29 @@
     }
 
     if (game.stage === "budget") {
-      const values = computeBudgetValues(game);
+      const values = normalizeBudgetDraft(game);
       return `
         <article class="panel">
           <span class="panel-kicker">Phase 2 • Monthly Budgeting</span>
           <h2 class="panel-title">Allocate This Month's Cash Flow</h2>
-          <p class="soft-copy">You cannot budget more than you actually have. Wants comes first, then the entire remaining future fund is split between savings and investing.</p>
+          <p class="soft-copy">All three sliders are in dollars. Wants, savings, and investing can never total more than the money available this month. Savings and investing stay linked, so moving one moves the other by the same amount.</p>
           <div class="grid-2" style="margin-top: 18px;">
             <div class="panel" style="padding: 18px;">
               <span class="panel-kicker">Budget Inputs</span>
               <div class="budget-grid">
                 ${renderBudgetSlider("Wants", "wants", values.wants, values.available, "This is lifestyle spending for the month.")}
-                ${renderBudgetSlider("Savings vs Investing Split", "futureSplit", appState.budgetDraft.futureSplit, 100, "Move this slider and savings/investing update together.")} 
+                ${renderBudgetSlider("Savings", "savings", values.savings, values.futurePool, "As savings goes up, investing drops by the same amount.")}
+                ${renderBudgetSlider("Investing", "investing", values.investing, values.futurePool, "As investing goes up, savings drops by the same amount.")}
               </div>
               <div class="allocation-dual">
                 <div class="allocation-card">
                   <span class="label">Savings</span>
-                  <strong>${currency(values.savings)}</strong>
+                  <strong id="budget-savings-card-value">${currency(values.savings)}</strong>
                   <p class="choice-note">Cash you keep liquid for security.</p>
                 </div>
                 <div class="allocation-card">
                   <span class="label">Investing</span>
-                  <strong>${currency(values.investing)}</strong>
+                  <strong id="budget-investing-card-value">${currency(values.investing)}</strong>
                   <p class="choice-note">Capital that goes to the investment hub next.</p>
                 </div>
               </div>
@@ -1505,19 +1608,19 @@
             <div class="panel" style="padding: 18px;">
               <span class="panel-kicker">Budget Breakdown</span>
               <div class="budget-summary">
-                <div class="summary-row"><span>Income After Loan Payments</span><strong>${currency(income)}</strong></div>
-                <div class="summary-row"><span>Fixed Needs</span><strong>${currency(needs)}</strong></div>
-                <div class="summary-row"><span>Discretionary Pool</span><strong>${currency(values.available)}</strong></div>
-                <div class="summary-row"><span>Wants</span><strong>${currency(values.wants)}</strong></div>
-                <div class="summary-row"><span>Future Fund</span><strong>${currency(values.futurePool)}</strong></div>
-                <div class="summary-row"><span>Total Allocated</span><strong>${currency(values.available)}</strong></div>
+                <div class="summary-row"><span>Income After Loan Payments</span><strong id="budget-income-value">${currency(income)}</strong></div>
+                <div class="summary-row"><span>Fixed Needs</span><strong id="budget-needs-value">${currency(needs)}</strong></div>
+                <div class="summary-row"><span>Discretionary Pool</span><strong id="budget-available-value">${currency(values.available)}</strong></div>
+                <div class="summary-row"><span>Wants</span><strong id="budget-wants-value">${currency(values.wants)}</strong></div>
+                <div class="summary-row"><span>Future Fund</span><strong id="budget-future-pool-value">${currency(values.futurePool)}</strong></div>
+                <div class="summary-row"><span>Total Allocated</span><strong id="budget-allocated-value">${currency(values.wants + values.savings + values.investing)}</strong></div>
               </div>
               <div class="divider"></div>
               <div class="forecast">
                 <span class="panel-kicker">Tactical Forecast</span>
-                ${values.savings >= income * 0.15
-                  ? "<p class='soft-copy'>Healthy month. You are protecting liquidity while still keeping room for growth.</p>"
-                  : "<p class='soft-copy'>Your savings side is light. That means this plan is faster but more fragile.</p>"}
+                <p class="soft-copy" id="budget-tactical-copy">${values.savings >= income * 0.15
+                  ? "Healthy month. You are protecting liquidity while still keeping room for growth."
+                  : "Your savings side is light. That means this plan is faster but more fragile."}</p>
               </div>
             </div>
           </div>
@@ -1627,12 +1730,12 @@
         <div class="budget-head">
           <div>
             <span class="label">${label}</span>
-            <strong>${key === "futureSplit" ? `${value}%` : currency(value)}</strong>
+            <strong id="budget-${key}-value">${currency(value)}</strong>
           </div>
-          <span class="chip">${ratio}%</span>
+          <span class="chip" id="budget-${key}-chip">Cap ${currency(max)}</span>
         </div>
-        <input type="range" min="0" max="${Math.max(0, max)}" step="${key === "futureSplit" ? 5 : 25}" value="${value}" data-action="budget-slider" data-key="${key}" />
-        <div class="budget-meter"><div class="budget-fill" style="width: ${ratio}%"></div></div>
+        <input id="budget-${key}-slider" type="range" min="0" max="${Math.max(0, max)}" step="1" value="${value}" data-action="budget-slider" data-key="${key}" />
+        <div class="budget-meter"><div class="budget-fill" id="budget-${key}-fill" style="width: ${ratio}%"></div></div>
         <div class="choice-note">${helper}</div>
       </div>
     `;
@@ -2114,14 +2217,34 @@
     const target = event.target;
     const action = target.dataset.action;
     if (action === "budget-slider") {
-      appState.budgetDraft[target.dataset.key] = Number(target.value);
-      render();
+      handleBudgetSliderInput(target.dataset.key, target.value);
     } else if (action === "invest-slider") {
       appState.investDraft[target.dataset.key] = Number(target.value);
       render();
     } else if (action === "opportunity-slider") {
       appState.pendingOpportunityAmount = Number(target.value);
       render();
+    }
+  });
+
+  document.addEventListener("pointerdown", (event) => {
+    const target = event.target;
+    if (target.dataset.action === "budget-slider") {
+      appState.activeBudgetSlider = target.dataset.key || null;
+    }
+  });
+
+  document.addEventListener("pointerup", () => {
+    if (!appState.activeBudgetSlider) return;
+    appState.activeBudgetSlider = null;
+    updateBudgetUI();
+  });
+
+  document.addEventListener("change", (event) => {
+    const target = event.target;
+    if (target.dataset.action === "budget-slider") {
+      appState.activeBudgetSlider = null;
+      updateBudgetUI();
     }
   });
 
@@ -2133,6 +2256,7 @@
       startNewGame,
       continueGame,
       resetGame,
+      handleBudgetSliderInput,
       handleEventChoice,
       confirmBudget,
       confirmInvestments,
