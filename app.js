@@ -550,6 +550,7 @@
     budgetDraft: { wants: 0, savings: 0, investing: 0 },
     activeBudgetSlider: null,
     investDraft: {},
+    activeInvestSlider: null,
     selectedEventChoice: 0,
     selectedChallengeAnswer: null,
     challengeAnswered: false,
@@ -684,6 +685,25 @@
     return Math.max(0, currentIncome(game) - currentNeeds(game));
   }
 
+  function getNeedsBreakdown(game) {
+    const base = Math.max(0, game.profile.fixedExpenses);
+    const rent = Math.round(base * 0.52);
+    const groceries = Math.round(base * 0.18);
+    const transport = Math.round(base * 0.12);
+    const utilities = Math.round(base * 0.1);
+    const insurance = Math.max(0, base - rent - groceries - transport - utilities);
+    const recurringDelta = game.recurringExpenseDelta || 0;
+    return {
+      rent,
+      groceries,
+      transport,
+      utilities,
+      insurance,
+      recurringDelta,
+      total: currentNeeds(game),
+    };
+  }
+
   function maybeOpportunity(month) {
     if (month % 3 === 0 || Math.random() > 0.62) {
       return deepClone(randomFrom(opportunities));
@@ -752,19 +772,34 @@
 
   function initializeDrafts(game) {
     refreshBudgetDraft(game);
-    appState.investDraft = {
-      cash: 15,
-      bonds: 20,
-      index: 30,
-      stocks: 20,
-      realestate: 10,
-      crypto: 5,
-    };
+    seedInvestmentDraft(game.pendingInvestAmount || 0);
     appState.selectedEventChoice = 0;
     appState.selectedChallengeAnswer = null;
     appState.challengeAnswered = false;
     appState.challengeCorrect = false;
     appState.pendingOpportunityAmount = game.opportunity ? game.opportunity.minCost : 0;
+  }
+
+  function seedInvestmentDraft(amount) {
+    const total = Math.max(0, Math.round(Number(amount || 0)));
+    const weights = {
+      cash: 0.18,
+      bonds: 0.14,
+      index: 0.3,
+      stocks: 0.18,
+      realestate: 0.12,
+      crypto: 0.08,
+    };
+    let remaining = total;
+    const draft = {};
+    investmentOptions.forEach((option, index) => {
+      const isLast = index === investmentOptions.length - 1;
+      const target = isLast ? remaining : Math.round(total * weights[option.id]);
+      const allocation = clamp(target, 0, remaining);
+      draft[option.id] = allocation;
+      remaining -= allocation;
+    });
+    appState.investDraft = draft;
   }
 
   function refreshBudgetDraft(game) {
@@ -807,6 +842,63 @@
     return { available, wants, futurePool, savings, investing };
   }
 
+  function normalizeInvestmentDraft(amount, changedKey) {
+    const cap = Math.max(0, Math.round(Number(amount || 0)));
+    const nextDraft = {};
+    investmentOptions.forEach((option) => {
+      nextDraft[option.id] = Math.max(0, Math.round(Number(appState.investDraft[option.id] || 0)));
+    });
+
+    if (changedKey) {
+      const otherTotal = investmentOptions.reduce((sum, option) => {
+        if (option.id === changedKey) return sum;
+        return sum + nextDraft[option.id];
+      }, 0);
+      nextDraft[changedKey] = clamp(nextDraft[changedKey], 0, Math.max(0, cap - otherTotal));
+    }
+
+    const total = investmentOptions.reduce((sum, option) => sum + nextDraft[option.id], 0);
+    if (total > cap) {
+      let overflow = total - cap;
+      investmentOptions.forEach((option) => {
+        if (overflow <= 0 || option.id === changedKey) return;
+        const reduction = Math.min(nextDraft[option.id], overflow);
+        nextDraft[option.id] -= reduction;
+        overflow -= reduction;
+      });
+      if (overflow > 0 && changedKey) {
+        nextDraft[changedKey] = Math.max(0, nextDraft[changedKey] - overflow);
+      }
+    }
+
+    appState.investDraft = nextDraft;
+    return computeInvestmentValuesFromDraft(cap, nextDraft);
+  }
+
+  function computeInvestmentValuesFromDraft(amount, draft) {
+    const cap = Math.max(0, Math.round(Number(amount || 0)));
+    const allocations = {};
+    let total = 0;
+    investmentOptions.forEach((option) => {
+      const value = Math.max(0, Math.round(Number(draft[option.id] || 0)));
+      allocations[option.id] = value;
+      total += value;
+    });
+    if (total > cap) {
+      total = cap;
+    }
+    return {
+      amount: cap,
+      allocations,
+      allocated: Math.min(total, cap),
+      remaining: Math.max(0, cap - total),
+    };
+  }
+
+  function computeInvestmentValues(game) {
+    return computeInvestmentValuesFromDraft(game.pendingInvestAmount || 0, appState.investDraft);
+  }
+
   function setNodeText(id, value) {
     const node = document.getElementById(id);
     if (node) node.textContent = value;
@@ -845,6 +937,7 @@
     setNodeText("budget-available-value", currency(values.available));
     setNodeText("budget-future-pool-value", currency(values.futurePool));
     setNodeText("budget-allocated-value", currency(values.wants + values.savings + values.investing));
+    setNodeText("budget-remaining-value", currency(Math.max(0, values.available - (values.wants + values.savings + values.investing))));
     setNodeText("budget-tactical-copy",
       values.savings >= currentIncome(game) * 0.15
         ? "Healthy month. You are protecting liquidity while still keeping room for growth."
@@ -882,6 +975,43 @@
     appState.budgetDraft[key] = Number(value);
     normalizeBudgetDraft(game, key);
     updateBudgetUI();
+  }
+
+  function updateInvestmentUI() {
+    const game = appState.game;
+    if (!game || game.stage !== "invest") return;
+    const values = computeInvestmentValues(game);
+    setNodeText("invest-amount-value", currency(values.amount));
+    setNodeText("invest-allocated-value", currency(values.allocated));
+    setNodeText("invest-remaining-value", currency(values.remaining));
+    setNodeText("invest-coach-copy",
+      values.remaining === 0
+        ? "Capital is fully assigned. Now choose the mix that matches your risk tolerance."
+        : "Unassigned dollars are waiting. Finish the plan before you execute the month."
+    );
+
+    investmentOptions.forEach((option) => {
+      const value = values.allocations[option.id];
+      const otherTotal = values.allocated - value;
+      const sliderMax = Math.max(0, values.amount - otherTotal);
+      setNodeText(`invest-${option.id}-value`, currency(value));
+      setNodeText(`invest-${option.id}-chip`, `${Math.round(values.amount ? (value / values.amount) * 100 : 0)}%`);
+      if (appState.activeInvestSlider !== option.id) {
+        setSliderValue(`invest-${option.id}-slider`, value, sliderMax);
+      } else {
+        const node = document.getElementById(`invest-${option.id}-slider`);
+        if (node) node.max = sliderMax;
+      }
+      setNodeWidth(`invest-${option.id}-fill`, Math.round(values.amount ? (value / values.amount) * 100 : 0));
+    });
+  }
+
+  function handleInvestmentSliderInput(key, value) {
+    const game = appState.game;
+    if (!game || game.stage !== "invest") return;
+    appState.investDraft[key] = Number(value);
+    normalizeInvestmentDraft(game.pendingInvestAmount || 0, key);
+    updateInvestmentUI();
   }
 
   function startNewGame() {
@@ -970,6 +1100,7 @@
     game.totalNeeds += currentNeeds(game);
     game.wantsSpend += values.wants;
     game.pendingInvestAmount = values.investing + game.bonusInvestPool;
+    seedInvestmentDraft(game.pendingInvestAmount);
     game.bonusInvestPool = 0;
 
     if (game.cash < 0) {
@@ -988,19 +1119,20 @@
   function confirmInvestments() {
     const game = appState.game;
     if (!game) return;
-    const amount = game.pendingInvestAmount || 0;
-    const totalPercent = Object.values(appState.investDraft).reduce((sum, value) => sum + Number(value), 0);
+    const values = computeInvestmentValues(game);
 
-    if (amount > 0 && totalPercent <= 0) {
+    if (values.amount > 0 && values.allocated <= 0) {
       toast("Allocate your investment budget first.");
       return;
     }
 
-    const normalize = totalPercent === 100 ? 1 : 100 / Math.max(totalPercent, 1);
+    if (values.remaining > 0) {
+      toast("Finish assigning all investment dollars before continuing.");
+      return;
+    }
+
     investmentOptions.forEach((option) => {
-      const pct = Number(appState.investDraft[option.id] || 0) * normalize / 100;
-      const contribution = amount * pct;
-      game.portfolio[option.id] += contribution;
+      game.portfolio[option.id] += values.allocations[option.id];
     });
 
     game.pendingInvestAmount = 0;
@@ -1579,14 +1711,44 @@
 
     if (game.stage === "budget") {
       const values = normalizeBudgetDraft(game);
+      const needsBreakdown = getNeedsBreakdown(game);
+      const remainingToAssign = Math.max(0, values.available - (values.wants + values.savings + values.investing));
       return `
         <article class="panel">
           <span class="panel-kicker">Phase 2 • Monthly Budgeting</span>
-          <h2 class="panel-title">Allocate This Month's Cash Flow</h2>
-          <p class="soft-copy">All three sliders are in dollars. Wants, savings, and investing can never total more than the money available this month. Savings and investing stay linked, so moving one moves the other by the same amount.</p>
+          <h2 class="panel-title">Pay The Fixed Bills, Then Direct The Rest</h2>
+          <p class="soft-copy">Rent and core needs are locked first. After that, use the sliders to decide how much goes to lifestyle, liquid savings, and investing. The adjustable total cannot exceed your monthly cash balance.</p>
           <div class="grid-2" style="margin-top: 18px;">
             <div class="panel" style="padding: 18px;">
-              <span class="panel-kicker">Budget Inputs</span>
+              <span class="panel-kicker">Locked Monthly Costs</span>
+              <div class="fixed-cost-grid">
+                <article class="fixed-cost-card">
+                  <span class="label">Rent</span>
+                  <strong>${currency(needsBreakdown.rent)}</strong>
+                </article>
+                <article class="fixed-cost-card">
+                  <span class="label">Groceries</span>
+                  <strong>${currency(needsBreakdown.groceries)}</strong>
+                </article>
+                <article class="fixed-cost-card">
+                  <span class="label">Transport</span>
+                  <strong>${currency(needsBreakdown.transport)}</strong>
+                </article>
+                <article class="fixed-cost-card">
+                  <span class="label">Utilities</span>
+                  <strong>${currency(needsBreakdown.utilities)}</strong>
+                </article>
+                <article class="fixed-cost-card">
+                  <span class="label">Insurance + Basics</span>
+                  <strong>${currency(needsBreakdown.insurance)}</strong>
+                </article>
+                <article class="fixed-cost-card ${needsBreakdown.recurringDelta >= 0 ? "fixed-cost-card--alert" : "fixed-cost-card--good"}">
+                  <span class="label">${needsBreakdown.recurringDelta >= 0 ? "Extra Pressure" : "Monthly Relief"}</span>
+                  <strong>${currency(Math.abs(needsBreakdown.recurringDelta))}</strong>
+                </article>
+              </div>
+              <div class="divider"></div>
+              <span class="panel-kicker">Adjustable Cash Plan</span>
               <div class="budget-grid">
                 ${renderBudgetSlider("Wants", "wants", values.wants, values.available, "This is lifestyle spending for the month.")}
                 ${renderBudgetSlider("Savings", "savings", values.savings, values.futurePool, "As savings goes up, investing drops by the same amount.")}
@@ -1609,11 +1771,12 @@
               <span class="panel-kicker">Budget Breakdown</span>
               <div class="budget-summary">
                 <div class="summary-row"><span>Income After Loan Payments</span><strong id="budget-income-value">${currency(income)}</strong></div>
-                <div class="summary-row"><span>Fixed Needs</span><strong id="budget-needs-value">${currency(needs)}</strong></div>
-                <div class="summary-row"><span>Discretionary Pool</span><strong id="budget-available-value">${currency(values.available)}</strong></div>
+                <div class="summary-row"><span>Locked Needs</span><strong id="budget-needs-value">${currency(needs)}</strong></div>
+                <div class="summary-row"><span>Cash Balance To Plan</span><strong id="budget-available-value">${currency(values.available)}</strong></div>
                 <div class="summary-row"><span>Wants</span><strong id="budget-wants-value">${currency(values.wants)}</strong></div>
-                <div class="summary-row"><span>Future Fund</span><strong id="budget-future-pool-value">${currency(values.futurePool)}</strong></div>
+                <div class="summary-row"><span>Savings + Investing Pool</span><strong id="budget-future-pool-value">${currency(values.futurePool)}</strong></div>
                 <div class="summary-row"><span>Total Allocated</span><strong id="budget-allocated-value">${currency(values.wants + values.savings + values.investing)}</strong></div>
+                <div class="summary-row"><span>Remaining To Assign</span><strong id="budget-remaining-value">${currency(remainingToAssign)}</strong></div>
               </div>
               <div class="divider"></div>
               <div class="forecast">
@@ -1633,20 +1796,39 @@
     }
 
     if (game.stage === "invest") {
-      const amount = game.pendingInvestAmount || 0;
+      const values = normalizeInvestmentDraft(game.pendingInvestAmount || 0);
       return `
         <article class="panel">
           <span class="panel-kicker">Phase 3 • Investment Hub</span>
-          <h2 class="panel-title">Deploy Capital With Intention</h2>
-          <p class="soft-copy">This month you can invest ${currency(amount)}. Percentages will normalize if they do not total exactly 100.</p>
+          <h2 class="panel-title">Choose Where This Month's Investment Dollars Go</h2>
+          <p class="soft-copy">Your budget already carved out the investing amount. Now assign every dollar across safer options and higher-upside assets before the month closes.</p>
+          <div class="investment-topline" style="margin-top: 18px;">
+            <article class="metric-card">
+              <span class="metric-label">Ready To Invest</span>
+              <div class="metric-value is-accent" id="invest-amount-value">${currency(values.amount)}</div>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">Allocated</span>
+              <div class="metric-value" id="invest-allocated-value">${currency(values.allocated)}</div>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">Remaining</span>
+              <div class="metric-value" id="invest-remaining-value">${currency(values.remaining)}</div>
+            </article>
+          </div>
           <div class="investment-grid" style="margin-top: 18px;">
             ${investmentOptions.map((option) => `
               <article class="investment-card ${option.risk === "high" ? "is-hot" : ""}">
                 <div class="risk-tag ${option.risk}">${option.risk} risk</div>
                 <strong>${option.title}</strong>
                 <p>${option.blurb}</p>
-                <label class="label">Allocation ${appState.investDraft[option.id] || 0}%</label>
-                <input type="range" min="0" max="100" step="5" value="${appState.investDraft[option.id] || 0}" data-action="invest-slider" data-key="${option.id}" />
+                <div class="budget-head">
+                  <span class="label">Allocation</span>
+                  <span class="chip" id="invest-${option.id}-chip">${Math.round(values.amount ? (values.allocations[option.id] / values.amount) * 100 : 0)}%</span>
+                </div>
+                <strong id="invest-${option.id}-value">${currency(values.allocations[option.id])}</strong>
+                <input id="invest-${option.id}-slider" type="range" min="0" max="${Math.max(0, values.amount - (values.allocated - values.allocations[option.id]))}" step="1" value="${values.allocations[option.id]}" data-action="invest-slider" data-key="${option.id}" />
+                <div class="budget-meter"><div class="budget-fill" id="invest-${option.id}-fill" style="width: ${Math.round(values.amount ? (values.allocations[option.id] / values.amount) * 100 : 0)}%"></div></div>
               </article>
             `).join("")}
           </div>
@@ -1660,6 +1842,12 @@
               <input type="range" min="${game.opportunity.minCost}" max="${Math.min(game.opportunity.maxCost, Math.max(game.opportunity.minCost, Math.floor(game.cash)))}" step="50" value="${appState.pendingOpportunityAmount}" data-action="opportunity-slider" />
             </article>
           ` : ""}
+          <div class="forecast" style="margin-top: 18px;">
+            <span class="panel-kicker">Coach Read</span>
+            <p class="soft-copy" id="invest-coach-copy">${values.remaining === 0
+              ? "Capital is fully assigned. Now choose the mix that matches your risk tolerance."
+              : "Unassigned dollars are waiting. Finish the plan before you execute the month."}</p>
+          </div>
           <div class="hero-actions" style="margin-top: 18px;">
             <button class="button-primary" data-action="confirm-invest">Execute Strategy</button>
           </div>
@@ -2219,8 +2407,7 @@
     if (action === "budget-slider") {
       handleBudgetSliderInput(target.dataset.key, target.value);
     } else if (action === "invest-slider") {
-      appState.investDraft[target.dataset.key] = Number(target.value);
-      render();
+      handleInvestmentSliderInput(target.dataset.key, target.value);
     } else if (action === "opportunity-slider") {
       appState.pendingOpportunityAmount = Number(target.value);
       render();
@@ -2231,13 +2418,18 @@
     const target = event.target;
     if (target.dataset.action === "budget-slider") {
       appState.activeBudgetSlider = target.dataset.key || null;
+    } else if (target.dataset.action === "invest-slider") {
+      appState.activeInvestSlider = target.dataset.key || null;
     }
   });
 
   document.addEventListener("pointerup", () => {
-    if (!appState.activeBudgetSlider) return;
+    const hadBudgetSlider = appState.activeBudgetSlider;
+    const hadInvestSlider = appState.activeInvestSlider;
     appState.activeBudgetSlider = null;
-    updateBudgetUI();
+    appState.activeInvestSlider = null;
+    if (hadBudgetSlider) updateBudgetUI();
+    if (hadInvestSlider) updateInvestmentUI();
   });
 
   document.addEventListener("change", (event) => {
@@ -2245,6 +2437,9 @@
     if (target.dataset.action === "budget-slider") {
       appState.activeBudgetSlider = null;
       updateBudgetUI();
+    } else if (target.dataset.action === "invest-slider") {
+      appState.activeInvestSlider = null;
+      updateInvestmentUI();
     }
   });
 
@@ -2257,6 +2452,7 @@
       continueGame,
       resetGame,
       handleBudgetSliderInput,
+      handleInvestmentSliderInput,
       handleEventChoice,
       confirmBudget,
       confirmInvestments,

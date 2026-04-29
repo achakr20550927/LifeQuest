@@ -576,6 +576,36 @@ input[type="password"] {
   gap: 16px;
 }
 
+.fixed-cost-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.fixed-cost-card {
+  padding: 14px;
+  border: 1px solid var(--line);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01)),
+    rgba(255, 255, 255, 0.02);
+  display: grid;
+  gap: 8px;
+}
+
+.fixed-cost-card strong {
+  font-size: 1.25rem;
+}
+
+.fixed-cost-card--alert {
+  border-color: rgba(255, 59, 48, 0.45);
+  color: #ffd2cf;
+}
+
+.fixed-cost-card--good {
+  border-color: rgba(199, 255, 208, 0.4);
+  color: var(--success);
+}
+
 .budget-row {
   display: grid;
   gap: 10px;
@@ -628,6 +658,12 @@ input[type="password"] {
   gap: 16px;
 }
 
+.investment-topline {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
 .allocation-dual {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -645,6 +681,9 @@ input[type="password"] {
   padding: 18px;
   display: grid;
   gap: 10px;
+  background:
+    radial-gradient(circle at top right, rgba(255, 59, 48, 0.08), transparent 30%),
+    rgba(255, 255, 255, 0.02);
 }
 
 .investment-card.is-hot {
@@ -957,6 +996,8 @@ input[type="password"] {
   .metric-strip,
   .grid-2,
   .grid-3,
+  .fixed-cost-grid,
+  .investment-topline,
   .investment-grid,
   .allocation-dual,
   .auth-grid,
