@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline": "#b18780",
+                        "surface-dim": "#131313",
+                        "surface-container-lowest": "#0e0e0e",
+                        "secondary-container": "#454747",
+                        "on-error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#930100",
+                        "surface-tint": "#ffb4a8",
+                        "on-secondary": "#2f3131",
+                        "secondary-fixed-dim": "#c6c6c7",
+                        "on-surface-variant": "#ebbbb4",
+                        "on-tertiary": "#313030",
+                        "surface-variant": "#353535",
+                        "tertiary-container": "#929090",
+                        "on-secondary-fixed": "#1a1c1c",
+                        "surface-container-high": "#2a2a2a",
+                        "on-tertiary-fixed-variant": "#474646",
+                        "surface-container-low": "#1b1b1b",
+                        "primary-container": "#ff5540",
+                        "inverse-surface": "#e2e2e2",
+                        "primary": "#ffb4a8",
+                        "on-primary-container": "#5c0000",
+                        "on-error": "#690005",
+                        "primary-fixed-dim": "#ffb4a8",
+                        "surface-container": "#1f1f1f",
+                        "error": "#ffb4ab",
+                        "primary-fixed": "#ffdad4",
+                        "on-tertiary-container": "#2a2a29",
+                        "surface-container-highest": "#353535",
+                        "outline-variant": "#603e39",
+                        "surface": "#131313",
+                        "on-secondary-fixed-variant": "#454747",
+                        "on-secondary-container": "#b4b5b5",
+                        "tertiary-fixed": "#e5e2e1",
+                        "background": "#000000",
+                        "on-primary-fixed": "#410000",
+                        "on-background": "#e2e2e2",
+                        "surface-bright": "#393939",
+                        "on-primary": "#690100",
+                        "tertiary": "#c9c6c5",
+                        "error-container": "#93000a",
+                        "inverse-on-surface": "#303030",
+                        "secondary": "#c6c6c7",
+                        "inverse-primary": "#c00100",
+                        "tertiary-fixed-dim": "#c9c6c5",
+                        "on-surface": "#e2e2e2",
+                        "secondary-fixed": "#e2e2e2",
+                        "on-tertiary-fixed": "#1c1b1b"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0px",
+                        "lg": "0px",
+                        "xl": "0px",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline-sm": ["Space Grotesk"],
+                        "body-md": ["Space Grotesk"],
+                        "label-sm": ["Space Grotesk"],
+                        "body-lg": ["Space Grotesk"],
+                        "headline-md": ["Space Grotesk"],
+                        "label-md": ["Space Grotesk"],
+                        "headline-lg": ["Space Grotesk"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: #000000; color: #ffffff; font-family: 'Space Grotesk', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-black text-on-surface min-h-screen pb-24">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center w-full px-4 h-16 bg-black rounded-none border-b border-white">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full border border-white overflow-hidden">
+<img alt="User Profile" data-alt="minimalist stylized 3d avatar of a professional gamer with red accents and tech gear" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAsg2kIS7ce5Yd9PS8WILh8uGq7HsW2cF8JrTSkCL-UzwG_tFw9uV8hgBVFZUpjeQf94fZ5tlIbuOTsmBwQTxKz02IfoBiVUg0SJ5z5RBNwnmCPxo2j0c_piJwgPPHkdrQyyiAlygSP4AawkYkVPTr1xGzRkx68mzJwDE92aanZ18emTeYDFqX88F_v8A-8g4lL0kv9tIsMasxU52pEqNBxe8BaIK_QvxG3g9avmEEFArcsZdJvF16sgK9-ppUJ-ypeyJQdqUGzUgKk"/>
+</div>
+<span class="font-['Space_Grotesk'] uppercase tracking-tighter font-bold text-red-600 text-xl italic">LIFEQUEST</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="font-['Space_Grotesk'] uppercase tracking-tighter font-bold text-white text-lg">$42,069</span>
+<span class="material-symbols-outlined text-white cursor-pointer hover:text-red-600 transition-colors">notifications</span>
+</div>
+</header>
+<main class="p-4 md:p-8 max-w-7xl mx-auto space-y-8">
+<!-- Urgent Alert Section -->
+<section class="border-2 border-red-600 p-6 bg-zinc-950 flex flex-col md:flex-row justify-between items-center gap-6 relative overflow-hidden">
+<div class="absolute top-0 left-0 h-full w-1 bg-red-600"></div>
+<div class="space-y-2">
+<div class="flex items-center gap-2 text-red-600">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">warning</span>
+<span class="font-label-md text-label-md uppercase tracking-widest">Urgent Event Detected</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-white">Tax Season Arrival</h2>
+<p class="font-body-md text-body-md text-secondary max-w-xl">The IRS portal has opened. Failure to file within 14 cycles will result in automatic credit penalties and asset freezes.</p>
+</div>
+<button class="bg-red-600 text-black px-8 py-4 font-label-md text-label-md uppercase font-black hover:bg-white transition-all active:scale-95 whitespace-nowrap">
+                Handle Event
+            </button>
+</section>
+<!-- Stats Overview Bento Grid -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+<!-- Progress Card -->
+<div class="border border-white p-6 bg-black flex flex-col justify-between aspect-square md:aspect-auto">
+<span class="font-label-sm text-label-sm text-secondary uppercase tracking-widest">Monthly Progress</span>
+<div class="space-y-4 mt-4">
+<h3 class="font-headline-sm text-headline-sm text-white">Month 1 <span class="text-secondary text-sm">of 12</span></h3>
+<div class="w-full bg-zinc-900 h-2">
+<div class="bg-red-600 h-full w-1/12"></div>
+</div>
+</div>
+</div>
+<!-- Cash Balance -->
+<div class="border border-white p-6 bg-black flex flex-col justify-between">
+<span class="font-label-sm text-label-sm text-secondary uppercase tracking-widest">Cash Balance</span>
+<div class="mt-4">
+<h3 class="font-headline-sm text-headline-sm text-white">$12,450.00</h3>
+<span class="text-red-600 font-label-sm text-[10px] uppercase">+2.4% THIS WEEK</span>
+</div>
+</div>
+<!-- Net Worth -->
+<div class="border border-white p-6 bg-black flex flex-col justify-between">
+<span class="font-label-sm text-label-sm text-secondary uppercase tracking-widest">Net Worth</span>
+<div class="mt-4">
+<h3 class="font-headline-sm text-headline-sm text-white">$142,069.12</h3>
+<span class="text-white font-label-sm text-[10px] uppercase">RANK: ELITE III</span>
+</div>
+</div>
+<!-- Credit Score -->
+<div class="border border-white p-6 bg-black flex flex-col justify-between">
+<span class="font-label-sm text-label-sm text-secondary uppercase tracking-widest">Credit Score</span>
+<div class="mt-4 flex items-end justify-between">
+<h3 class="font-headline-sm text-headline-sm text-white">742</h3>
+<div class="flex gap-1">
+<div class="w-1 h-4 bg-red-600"></div>
+<div class="w-1 h-6 bg-red-600"></div>
+<div class="w-1 h-8 bg-red-600"></div>
+<div class="w-1 h-10 bg-white"></div>
+<div class="w-1 h-12 bg-zinc-800"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Navigation Cards Grid -->
+<div class="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="group border border-white p-8 bg-black hover:bg-zinc-900 transition-colors cursor-pointer flex flex-col gap-6">
+<div class="flex justify-between items-start">
+<span class="material-symbols-outlined text-4xl text-red-600">account_balance_wallet</span>
+<span class="material-symbols-outlined text-white opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+</div>
+<div>
+<h4 class="font-headline-sm text-headline-sm text-white uppercase tracking-tighter">Manage Budget</h4>
+<p class="font-body-md text-body-md text-secondary mt-2">Control your cash flow and optimize daily expenses.</p>
+</div>
+</div>
+<div class="group border border-white p-8 bg-black hover:bg-zinc-900 transition-colors cursor-pointer flex flex-col gap-6">
+<div class="flex justify-between items-start">
+<span class="material-symbols-outlined text-4xl text-red-600">trending_up</span>
+<span class="material-symbols-outlined text-white opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+</div>
+<div>
+<h4 class="font-headline-sm text-headline-sm text-white uppercase tracking-tighter">Invest Wealth</h4>
+<p class="font-body-md text-body-md text-secondary mt-2">Deploy capital into high-yield market assets.</p>
+</div>
+</div>
+<div class="group border border-white p-8 bg-black hover:bg-zinc-900 transition-colors cursor-pointer flex flex-col gap-6">
+<div class="flex justify-between items-start">
+<span class="material-symbols-outlined text-4xl text-red-600">bolt</span>
+<span class="material-symbols-outlined text-white opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+</div>
+<div>
+<h4 class="font-headline-sm text-headline-sm text-white uppercase tracking-tighter">Handle Events</h4>
+<p class="font-body-md text-body-md text-secondary mt-2">Navigate life's unexpected financial challenges.</p>
+</div>
+</div>
+<div class="group border border-white p-8 bg-black hover:bg-zinc-900 transition-colors cursor-pointer flex flex-col gap-6">
+<div class="flex justify-between items-start">
+<span class="material-symbols-outlined text-4xl text-red-600">sports_esports</span>
+<span class="material-symbols-outlined text-white opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+</div>
+<div>
+<h4 class="font-headline-sm text-headline-sm text-white uppercase tracking-tighter">Mini-Games</h4>
+<p class="font-body-md text-body-md text-secondary mt-2">Earn bonus experience through skill challenges.</p>
+</div>
+</div>
+</div>
+<!-- Active Missions -->
+<aside class="border border-white p-6 bg-black">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-label-md text-label-md text-white uppercase tracking-widest">Active Missions</h3>
+<span class="text-red-600 text-[10px] font-bold">2/5 COMPLETE</span>
+</div>
+<ul class="space-y-4">
+<li class="border-l-2 border-red-600 pl-4 py-2 bg-zinc-950">
+<p class="font-label-md text-label-md text-white">Emergency Fund Alpha</p>
+<p class="text-[10px] text-secondary uppercase mt-1">Goal: $1,000 | Current: $850</p>
+<div class="w-full bg-zinc-900 h-1 mt-2">
+<div class="bg-red-600 h-full w-[85%]"></div>
+</div>
+</li>
+<li class="border-l-2 border-white pl-4 py-2">
+<p class="font-label-md text-label-md text-white">Passive Income Stream</p>
+<p class="text-[10px] text-secondary uppercase mt-1">Buy 10 Dividend Stocks</p>
+</li>
+<li class="border-l-2 border-white pl-4 py-2">
+<p class="font-label-md text-label-md text-white">Credit Restoration</p>
+<p class="text-[10px] text-secondary uppercase mt-1">Reach 750 Score</p>
+</li>
+</ul>
+<button class="w-full mt-8 border border-white py-3 font-label-sm text-label-sm text-white uppercase hover:bg-red-600 hover:text-black hover:border-red-600 transition-all">
+                    View All Missions
+                </button>
+</aside>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-around items-center h-20 bg-black border-t border-white">
+<a class="flex flex-col items-center justify-center text-red-600 border-t-2 border-red-600 pt-1 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-['Space_Grotesk'] text-[10px] uppercase font-bold">Dashboard</span>
+</a>
+<a class="flex flex-col items-center justify-center text-white pt-1 hover:bg-zinc-900 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="payments">payments</span>
+<span class="font-['Space_Grotesk'] text-[10px] uppercase font-bold">Budget</span>
+</a>
+<a class="flex flex-col items-center justify-center text-white pt-1 hover:bg-zinc-900 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="trending_up">trending_up</span>
+<span class="font-['Space_Grotesk'] text-[10px] uppercase font-bold">Invest</span>
+</a>
+<a class="flex flex-col items-center justify-center text-white pt-1 hover:bg-zinc-900 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="school">school</span>
+<span class="font-['Space_Grotesk'] text-[10px] uppercase font-bold">Learn</span>
+</a>
+</nav>
+</body></html>
