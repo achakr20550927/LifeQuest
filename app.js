@@ -558,6 +558,20 @@
     toast: "",
   };
 
+  const guestAccount = {
+    id: "guest-local",
+    firstName: "Player",
+    lastName: "",
+    email: "",
+    password: "",
+    wallet: 0,
+    academyPoints: 0,
+    bestScore: 0,
+    completedQuizzes: {},
+    save: null,
+    createdAt: 0,
+  };
+
   function deepClone(value) {
     return JSON.parse(JSON.stringify(value));
   }
@@ -596,6 +610,10 @@
 
   function updateAccount(mutator) {
     if (!appState.account) return;
+    if (appState.account.id === guestAccount.id) {
+      appState.account = mutator(deepClone(appState.account));
+      return;
+    }
     const accounts = getAccounts();
     const index = accounts.findIndex((item) => item.id === appState.account.id);
     if (index === -1) return;
@@ -607,7 +625,7 @@
 
   function signOut() {
     localStorage.removeItem(STORAGE_KEYS.session);
-    appState.account = null;
+    appState.account = deepClone(guestAccount);
     appState.game = null;
     appState.quizState = null;
     appState.tab = "home";
@@ -1244,35 +1262,6 @@
     `;
   }
 
-  function renderAuthPanels() {
-    return `
-      <section class="auth-grid">
-        <article class="panel auth-card">
-          <span class="panel-kicker">Sign In</span>
-          <h2 class="panel-title">Return To Your Save</h2>
-          <form class="form-grid">
-            <input id="signin-email" type="text" placeholder="Email" />
-            <input id="signin-password" type="password" placeholder="Password" />
-            <button type="button" class="button-primary" data-action="signin">Sign In</button>
-          </form>
-        </article>
-        <article class="panel auth-card">
-          <span class="panel-kicker">Create Account</span>
-          <h2 class="panel-title">Start Your Own Profile</h2>
-          <form class="form-grid">
-            <div class="grid-2">
-              <input id="signup-first" type="text" placeholder="First name" />
-              <input id="signup-last" type="text" placeholder="Last name" />
-            </div>
-            <input id="signup-email" type="text" placeholder="Email" />
-            <input id="signup-password" type="password" placeholder="Password" />
-            <button type="button" class="button-primary" data-action="signup">Create Account</button>
-          </form>
-        </article>
-      </section>
-    `;
-  }
-
   function renderHome() {
     const hasSave = Boolean(appState.account && appState.account.save);
     const welcome = appState.account ? `Welcome, ${appState.account.firstName}.` : "Welcome to LifeQuest.";
@@ -1322,8 +1311,6 @@
           </div>
         </section>
 
-        ${appState.account ? "" : renderAuthPanels()}
-
         <section class="footer-grid">
           ${missionFacts
             .map(
@@ -1341,10 +1328,6 @@
   }
 
   function renderPlay() {
-    if (!appState.account) {
-      return `<section class="panel"><h2 class="panel-title">Account Required</h2><p class="soft-copy">Create an account or sign in first so your game save, quiz rewards, and scores are attached to you.</p></section>`;
-    }
-
     if (!appState.game) {
       return `
         <section class="panel">
@@ -1713,10 +1696,6 @@
   }
 
   function renderStats() {
-    if (!appState.account) {
-      return `<section class="panel"><h2 class="panel-title">Stats Offline</h2><p class="soft-copy">Sign in to track your own progress, wallet, and saved runs.</p></section>`;
-    }
-
     const game = appState.game;
     const points = game
       ? game.history.length
@@ -1937,7 +1916,6 @@
             <div class="chip">${welcome}</div>
             ${game ? `<div class="chip">Month ${game.month}/12</div>` : '<div class="chip">Ready</div>'}
             <div class="chip chip--accent">Net Worth ${currency(balance)}</div>
-            ${appState.account ? '<button class="button-secondary" data-action="signout">Sign Out</button>' : ""}
             ${game ? '<button class="button-secondary" data-action="reset-game">Reset Run</button>' : ""}
           </div>
         </header>
@@ -2054,6 +2032,10 @@
           appState.tab = "play";
         }
       }
+    }
+
+    if (!appState.account) {
+      appState.account = deepClone(guestAccount);
     }
 
     if (requestedTab) {
